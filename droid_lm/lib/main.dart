@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:droid_lm/daily_usage_features.dart';
 
 void main() {
   runApp(const MyApp());
@@ -405,6 +406,43 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
   }
 }
 
+/// Service to handle ML data preparation
+class MLDataService {
+  /// Reads all local data, converts to features, and prints to console
+  static Future<void> processAndPrintFeatures() async {
+    debugPrint("--- START ML FEATURE PROCESSING ---");
+    
+    // 1. Get all saved dates
+    final List<String> dates = await LocalStorageService.getAllSavedDays();
+    List<DailyUsageFeatures> featureSet = [];
+
+    // 2. Iterate and convert
+    for (String date in dates) {
+      final DailyUsageInfo? dayInfo = await LocalStorageService.getDailyUsage(date);
+      if (dayInfo != null) {
+        // Convert the DailyUsageInfo (which matches raw JSON structure) to Map first
+        // effectively simulating "fromRawUsageJson" input
+        final rawJson = dayInfo.toJson();
+        
+        final features = DailyUsageFeatures.fromRawUsageJson(rawJson);
+        featureSet.add(features);
+        
+        debugPrint("Processed ${features.date}: Total ${features.totalMinutes}m, Top: ${features.topApps}");
+      }
+    }
+
+    // 3. Print Feature Vectors
+    debugPrint("\n--- FEATURE VECTORS (Copy for Training) ---");
+    debugPrint("[");
+    for (int i = 0; i < featureSet.length; i++) {
+        final comma = i < featureSet.length - 1 ? ',' : '';
+        debugPrint("  ${jsonEncode(featureSet[i].toMap())}$comma");
+    }
+    debugPrint("]");
+    debugPrint("-------------------------------------------");
+  }
+}
+
 class SavedRecordsPage extends StatefulWidget {
   const SavedRecordsPage({super.key});
 
@@ -432,11 +470,25 @@ class _SavedRecordsPageState extends State<SavedRecordsPage> {
     }
   }
 
+  Future<void> _handleMLProcessing() async {
+     ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Processing features... Check Console.')),
+      );
+      await MLDataService.processAndPrintFeatures();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved Records'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology), // Icon for ML/Intelligence
+            tooltip: 'Process for ML',
+            onPressed: !_isLoading && _savedDates.isNotEmpty ? _handleMLProcessing : null,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

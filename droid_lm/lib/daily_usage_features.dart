@@ -67,7 +67,7 @@ class DailyUsageFeatures {
     final String date = json['date'] as String? ?? 'Unknown Date';
     final List<dynamic> appsList = json['apps'] as List<dynamic>? ?? [];
 
-    // Parse apps into a temporary list for sorting
+    // 1. Parse apps and calculate Total Screen Time
     List<_AppItem> parsedApps = appsList.map((item) {
       return _AppItem(
         packageName: item['package'] as String? ?? 'unknown',
@@ -75,43 +75,82 @@ class DailyUsageFeatures {
       );
     }).toList();
 
-    // Calculate totals
     double totalMinutesDouble = 0.0;
     for (var app in parsedApps) {
       totalMinutesDouble += app.minutes;
     }
     int totalMinutes = totalMinutesDouble.round();
 
+    // 2. Top 3 Apps by Minutes
     // Sort descending by usage
     parsedApps.sort((a, b) => b.minutes.compareTo(a.minutes));
 
-    // Extract Top 3 Apps
     List<String> topApps = [];
     List<int> topAppMinutes = [];
     
-    // We take up to 3
+    // Extract up to 3
     final int count = parsedApps.length < 3 ? parsedApps.length : 3;
     for (int i = 0; i < count; i++) {
       topApps.add(parsedApps[i].packageName);
       topAppMinutes.add(parsedApps[i].minutes.round());
     }
 
-    // Pad with empty/zero if less than 3 (optional, but good for ML consistency)
+    // Pad with placeholders if less than 3 to maintain fixed feature vector size for ML
     while (topApps.length < 3) {
-      topApps.add('');
+      topApps.add('None');
       topAppMinutes.add(0);
     }
 
-    // Determine Dominant App
-    String dominantApp = parsedApps.isNotEmpty ? parsedApps.first.packageName : 'None';
+    // 3. Assign Usage to Time Windows
+    // Assumption: Because the input data is a daily aggregate without hourly timestamps,
+    // we approximate the distribution by splitting the Total Minutes evenly across the 4 windows.
+    // In a real hourly-data scenario, we would sum specific buckets.
+    //
+    // Windows:
+    // - Night (00:00 - 06:00)
+    // - Morning (06:00 - 12:00)
+    // - Afternoon (12:00 - 18:00)
+    // - Evening (18:00 - 24:00)
+    
+    int approxWindowUsage = totalMinutes ~/ 4; // Integer division
+    int remainder = totalMinutes % 4;
 
-    // TODO: Current Native API does not provide time-of-day breakdown.
-    // These fields are placeholders until we implement hourly querying in MainActivity.kt.
-    int morningMinutes = 0;
-    int afternoonMinutes = 0;
-    int eveningMinutes = 0;
-    int nightMinutes = 0;
-    String dominantTimeWindow = 'Unknown';
+    int nightMinutes = approxWindowUsage;
+    int morningMinutes = approxWindowUsage;
+    int afternoonMinutes = approxWindowUsage;
+    int eveningMinutes = approxWindowUsage;
+
+    // Distribute remainder minutes sequentially (arbitrary decision to ensure sum equals total)
+    if (remainder > 0) eveningMinutes++;
+    if (remainder > 1) afternoonMinutes++;
+    if (remainder > 2) morningMinutes++;
+
+    // 4. Dominant Factors
+    String dominantApp = parsedApps.isNotEmpty ? parsedApps.first.packageName : 'None';
+    
+    // Since we approximated evenly, this is somewhat artificial, but we implement the logic:
+    // Compare the 4 windows to find the largest.
+    Map<String, int> windows = {
+      'Night': nightMinutes,
+      'Morning': morningMinutes,
+      'Afternoon': afternoonMinutes,
+      'Evening': eveningMinutes,
+    };
+    
+    // Simple sort to find max
+    var sortedWindows = windows.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    String dominantTimeWindow = sortedWindows.first.key;
+    // If usage is 0, set to None
+    if (totalMinutes == 0) {
+      dominantTimeWindow = 'None';
+    } else if (nightMinutes == morningMinutes && morningMinutes == afternoonMinutes) {
+       // If perfectly even (and not 0), we might label it 'Balanced' or just keep the first one (Night).
+       // We'll leave it as the sort result (which is stable) or 'Balanced' if desired, 
+       // but typically ML prefers categorical consistency.
+       dominantTimeWindow = 'Balanced';
+    }
 
     return DailyUsageFeatures(
       date: date,
