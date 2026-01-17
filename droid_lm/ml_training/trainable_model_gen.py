@@ -2,55 +2,101 @@ import tensorflow as tf
 import numpy as np
 import os
 
+# Constants for Model Architecture
+FEATURE_DIM = 34 # Daily behavior features
+WINDOW_SIZE = 3  # Sliding window size (Days)
+INPUT_DIM = FEATURE_DIM * WINDOW_SIZE # 102 Features (Flattened Temporal Window)
+OUTPUT_DIM = 2 # [HabitualityScore, DistractionScore]
+
 class TrainableModel(tf.Module):
     def __init__(self):
         super(TrainableModel, self).__init__()
-        # Input: 10 features
-        # Architecture: Dense(32) -> ReLU -> Dense(16) -> ReLU -> Dense(1) -> Sigmoid
+        # Input: Flattened Temporal Window Vector (102 floats)
+        # Why Temporal Windows?
+        # By feeding a sequence (Day T-2, T-1, T) as a single flat vector,
+        # the model can learn transition patterns (e.g., Increasing Screen Time -> High Distraction).
+        # This increases capacity to detect "Momentum" and "Accumulation" effects compared to single-day inputs.
         
-        # Layer 1: 10 -> 32
-        self.w1 = tf.Variable(tf.random.normal([10, 32], stddev=0.1), name='w1')
-        self.b1 = tf.Variable(tf.zeros([32]), name='b1')
+    def __init__(self):
+        super(TrainableModel, self).__init__()
+        # Input: Flattened Temporal Window Vector (102 floats)
+        # Architecture: 
+        #   Input(102) 
+        #   -> Dense(64, ReLU)   [Latent Feature Extraction]
+        #   -> Dense(64, ReLU)   [Pattern Consolidation]
+        #   -> Dense(32, ReLU)   [Bottleneck / Compression]
+        #   -> Dense(2, Linear)  [Projection]
+        #   -> Sigmoid           [Normalization 0-1]
         
-        # Layer 2: 32 -> 16
-        self.w2 = tf.Variable(tf.random.normal([32, 16], stddev=0.1), name='w2')
-        self.b2 = tf.Variable(tf.zeros([16]), name='b2')
+        # Latent Representation Learning:
+        # The deeper stack (64->64) allows the model to map raw usage signals (Volume, Time)
+        # into abstract concepts like "Focus State" or "Doomscrolling Routine"
+        # before making the final Habituality/Distraction classifications.
         
-        # Layer 3: 16 -> 1
-        self.w3 = tf.Variable(tf.random.normal([16, 1], stddev=0.1), name='w3')
-        self.b3 = tf.Variable(tf.zeros([1]), name='b3')
+        # Why Multi-Target Learning?
+        # Predicting both Habituality and Distraction simultaneously forces the shared layers
+        # (w1, w2, w3) to learn a robust representation of "User State" that is useful for ALL tasks.
+        # This regularization prevents overfitting to one specific metric and improves generalization.
+
+        # Layer 1: 102 -> 64
+        self.w1 = tf.Variable(tf.random.normal([INPUT_DIM, 64], stddev=0.1), name='w1')
+        self.b1 = tf.Variable(tf.zeros([64]), name='b1')
+        
+        # Layer 2: 64 -> 64
+        self.w2 = tf.Variable(tf.random.normal([64, 64], stddev=0.1), name='w2')
+        self.b2 = tf.Variable(tf.zeros([64]), name='b2')
+        
+        # Layer 3: 64 -> 32
+        self.w3 = tf.Variable(tf.random.normal([64, 32], stddev=0.1), name='w3')
+        self.b3 = tf.Variable(tf.zeros([32]), name='b3')
+
+        # Layer 4: 32 -> 2 (Output)
+        self.w4 = tf.Variable(tf.random.normal([32, OUTPUT_DIM], stddev=0.1), name='w4')
+        self.b4 = tf.Variable(tf.zeros([OUTPUT_DIM]), name='b4')
 
         # Optimization
         self.learning_rate = 0.01
         
     def __call__(self, x):
         # Forward pass
+        # L1
         x = tf.matmul(x, self.w1) + self.b1
         x = tf.nn.relu(x)
         
+        # L2
         x = tf.matmul(x, self.w2) + self.b2
         x = tf.nn.relu(x)
         
+        # L3
         x = tf.matmul(x, self.w3) + self.b3
+        x = tf.nn.relu(x)
+
+        # L4 (Linear Projection)
+        x = tf.matmul(x, self.w4) + self.b4
+        
+        # Final Activation (0-1 Score)
         return tf.nn.sigmoid(x)
 
     @tf.function(input_signature=[
-        tf.TensorSpec(shape=[None, 10], dtype=tf.float32),  # x input
-        tf.TensorSpec(shape=[None, 1], dtype=tf.float32)    # y target
+        tf.TensorSpec(shape=[None, INPUT_DIM], dtype=tf.float32),  # x input (Batch, 102)
+        tf.TensorSpec(shape=[None, OUTPUT_DIM], dtype=tf.float32)  # y target (Batch, 2)
     ])
     def train(self, x, y):
         with tf.GradientTape() as tape:
             prediction = self(x)
-            # MSE Loss
+            # MSE Loss (Average over Batch and Output Dims)
             loss = tf.reduce_mean(tf.square(y - prediction))
             
         # Gradients
-        vars_to_train = [self.w1, self.b1, self.w2, self.b2, self.w3, self.b3]
+        vars_to_train = [
+            self.w1, self.b1, 
+            self.w2, self.b2, 
+            self.w3, self.b3,
+            self.w4, self.b4
+        ]
         gradients = tape.gradient(loss, vars_to_train)
         
-        # Manual SGD Update (Simple & robust for TFLite)
-        # optimizer.apply_gradients is complicated in TFLite due to resource variables specifics
-        # Simple SGD: w = w - lr * grad
+        # Manual SGD Update
         for var, grad in zip(vars_to_train, gradients):
             var.assign_sub(grad * self.learning_rate)
             
@@ -60,7 +106,7 @@ class TrainableModel(tf.Module):
         }
 
     @tf.function(input_signature=[
-        tf.TensorSpec(shape=[None, 10], dtype=tf.float32)
+        tf.TensorSpec(shape=[None, INPUT_DIM], dtype=tf.float32)
     ])
     def infer(self, x):
         return {
@@ -73,7 +119,8 @@ class TrainableModel(tf.Module):
         return {
             "w1": self.w1, "b1": self.b1,
             "w2": self.w2, "b2": self.b2,
-            "w3": self.w3, "b3": self.b3
+            "w3": self.w3, "b3": self.b3,
+            "w4": self.w4, "b4": self.b4
         }
 
 def create_and_convert():

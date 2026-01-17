@@ -64,20 +64,32 @@ class MainActivity : FlutterActivity() {
                 "trainHabitModel" -> {
                     // Extract args safely on Main Thread
                     val featuresArg = call.argument<List<Any>>("features")
-                    val labelsArg = call.argument<List<Double>>("labels")
+                    val labelsArg = call.argument<List<Any>>("labels")
                     
                     if (featuresArg != null && labelsArg != null) {
                         try {
-                             // Safely convert generic list to List<Double>
-                             // Doing this conversion on main thread is fast enough, 
-                             // but we can also move it to bg if strictly needed. 
-                             // For safety, let's keep arg extraction here.
-                             val features = featuresArg.map { 
-                                 (it as List<*>).map { num -> (num as Number).toDouble() } 
-                             }
-                             val labels = labelsArg.map { it.toDouble() }
+                             // Expected Shapes:
+                             // features: List<List<Double>> (Batch Size x 102)
+                             // labels: List<List<Double>> (Batch Size x 2) OR List<Double> (Batch Size x 1)
                              
-                             // Run training on background thread to avoid freezing UI
+                             // Safely parse Features
+                             val features = featuresArg.map { element ->
+                                 when (element) {
+                                     is List<*> -> element.map { (it as Number).toDouble() }
+                                     else -> throw IllegalArgumentException("Feature sample expected to be a List, got: ${element?.javaClass?.simpleName}")
+                                 }
+                             }
+
+                             // Safely parse Labels (Handle both 1D and 2D from Dart)
+                             val labels = labelsArg.map { element ->
+                                 when (element) {
+                                     is List<*> -> element.map { (it as Number).toDouble() }
+                                     is Number -> listOf(element.toDouble()) // Wrap scalar in list -> [0.5]
+                                     else -> throw IllegalArgumentException("Label sample expected to be List or Number, got: ${element?.javaClass?.simpleName}")
+                                 }
+                             }
+                             
+                             // Run training on background thread
                              Thread {
                                  try {
                                      val output = trainHabitModel(features, labels)
@@ -91,7 +103,7 @@ class MainActivity : FlutterActivity() {
                                  }
                              }.start()
                         } catch (e: Exception) {
-                             result.error("ARG_ERROR", e.message, null)
+                             result.error("ARG_ERROR", "Parsing Error: ${e.message}", null)
                         }
                     } else {
                         result.error("INVALID_ARGS", "Features or labels missing", null)
@@ -255,47 +267,83 @@ class MainActivity : FlutterActivity() {
 
     /**
      * Trains the local TFLite model with the provided behavioral data.
+     * 
+     * @param features: List of 102-dim temporal window vectors.
+     * @param labels: List of 2-dim target vectors [HabitScore, DistractionScore].
      */
-    private fun trainHabitModel(features: List<List<Double>>, labels: List<Double>): String {
+    private fun trainHabitModel(features: List<List<Double>>, labels: List<List<Double>>): String {
         try {
             // 1. Load Model
             val modelBuffer = loadModelFile("trainable_micro_model.tflite")
             val interpreter = org.tensorflow.lite.Interpreter(modelBuffer)
             
             // 2. Prepare Data Buffers
-            // Input: [BatchSize=1, 10 Features] for simple iteration
-            // We train one sample at a time to keep memory usage minimal (Stochastic Gradient Descent)
-            
-            val NUM_EPOCHS = 3
-            val NUM_FEATURES = 10
+            val NUM_EPOCHS = 10
+            val NUM_FEATURES = 102 // 34 features * 3 days
+            val NUM_TARGETS = 2   // [HabitScore, DistractionScore]
             var totalLoss = 0.0f
             
+            // --- Sanity Checks START ---
+            if (features.isEmpty()) {
+                return "Error: Training dataset is empty."
+            }
+            
+            val actualFeatureDim = features[0].size
+            val actualTargetDim = labels[0].size // Now checking list inside list
+            
+            val sb = StringBuilder()
+            sb.append("Training Report:\n")
+            sb.append("Samples: ${features.size}\n")
+            sb.append("Input Dim: $actualFeatureDim (Expected: $NUM_FEATURES)\n")
+            sb.append("Target Dim: $actualTargetDim (Expected: $NUM_TARGETS)\n")
+            
+            // Validate Logic match
+            if (features.size != labels.size) {
+                 return "Error: Data mismatch. Features: ${features.size}, Labels: ${labels.size}"
+            }
+            // Validate Input shape
+            if (actualFeatureDim != NUM_FEATURES) {
+                return "Error: Input dimension mismatch. Got $actualFeatureDim, expected $NUM_FEATURES."
+            }
+            // Validate Target shape
+            if (actualTargetDim != NUM_TARGETS) {
+                return "Error: Target dimension mismatch. Got $actualTargetDim, expected $NUM_TARGETS."
+            }
+            // --- Sanity Checks END ---
+            
             val inputBuffer = java.nio.ByteBuffer.allocateDirect(4 * NUM_FEATURES).order(java.nio.ByteOrder.nativeOrder())
-            val targetBuffer = java.nio.ByteBuffer.allocateDirect(4 * 1).order(java.nio.ByteOrder.nativeOrder())
+            val targetBuffer = java.nio.ByteBuffer.allocateDirect(4 * NUM_TARGETS).order(java.nio.ByteOrder.nativeOrder())
             
             // Output buffer for "loss" (returned by train signature)
             val outputMap = mutableMapOf<String, Any>()
             val lossBuffer = java.nio.ByteBuffer.allocateDirect(4 * 1).order(java.nio.ByteOrder.nativeOrder())
             outputMap["loss"] = lossBuffer
-
-            val sb = StringBuilder()
             
             for (epoch in 1..NUM_EPOCHS) {
                 var epochLoss = 0.0f
                 
                 for (i in features.indices) {
                     val sample = features[i]
-                    val label = labels[i]
+                    val labelVector = labels[i] // This is List<Double> of size 2
                     
-                    // Fill Buffers
+                    if (labelVector.size != NUM_TARGETS) {
+                         return "Error: Target vector size mismatch at index $i. Got ${labelVector.size}, expected $NUM_TARGETS."
+                    }
+
+                    // Fill Input Buffer (102 floats)
                     inputBuffer.rewind()
                     for (v in sample) {
                         inputBuffer.putFloat(v.toFloat())
                     }
                     
+                    // Fill Target Buffer (2 floats: [Habituality, Distraction])
                     targetBuffer.rewind()
-                    targetBuffer.putFloat(label.toFloat())
+                    for (targetVal in labelVector) {
+                         // Safely convert Double to Float
+                        targetBuffer.putFloat(targetVal.toFloat())
+                    }
                     
+                    // Reset Loss Buffer
                     lossBuffer.rewind()
                     
                     // Run "train" signature
@@ -307,12 +355,14 @@ class MainActivity : FlutterActivity() {
                 }
                 
                 val avgLoss = epochLoss / features.size
-                sb.append("Epoch $epoch Loss: $avgLoss\n")
-                totalLoss = avgLoss // track last
+                
+                // Log every epoch for feedback
+                sb.append("Epoch $epoch Loss: ${"%.5f".format(avgLoss)}\n")
+                totalLoss = avgLoss
             }
             
             interpreter.close()
-            return "Training Complete.\n$sb"
+            return sb.toString()
             
         } catch (e: Exception) {
             return "Error during training: ${e.message}"

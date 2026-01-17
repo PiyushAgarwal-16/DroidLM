@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:droid_lm/daily_usage_features.dart';
 import 'package:droid_lm/training_console.dart';
+import 'package:droid_lm/behavior_analysis.dart';
+import 'package:droid_lm/weekly_insights_screen.dart';
+import 'package:droid_lm/home_dashboard.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +23,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const UsageStatsPage(),
+      home: const HomeDashboard(),
     );
   }
 }
@@ -123,8 +126,26 @@ class UsageStatsService {
   }
 
   /// Triggers on-device training via Native Layer
-  static Future<String> trainHabitModel(List<List<double>> features, List<double> labels) async {
+  static Future<String> trainHabitModel(List<List<double>> features, List<List<double>> labels) async {
     try {
+      debugPrint("--- DART PRE-TRAINING CHECKS ---");
+      debugPrint("Inputs Type: ${features.runtimeType}");
+      if (features.isNotEmpty) {
+        debugPrint("Inputs First Type: ${features.first.runtimeType}");
+        debugPrint("Inputs First Length: ${features.first.length}");
+      } else {
+        debugPrint("Inputs: EMPTY");
+      }
+      
+      debugPrint("Targets Type: ${labels.runtimeType}");
+      if (labels.isNotEmpty) {
+        debugPrint("Targets First Type: ${labels.first.runtimeType}");
+        debugPrint("Targets First Length: ${labels.first.length}");
+      } else {
+        debugPrint("Targets: EMPTY");
+      }
+      debugPrint("--------------------------------");
+
       // Pass features and labels as arguments
       final result = await platform.invokeMethod('trainHabitModel', {
         "features": features,
@@ -654,12 +675,59 @@ class _SavedRecordsPageState extends State<SavedRecordsPage> {
       }
   }
 
+  Future<void> _openWeeklyInsights() async {
+    setState(() => _isLoading = true);
+
+    List<ModelOutput> outputs = [];
+    
+    // Process last 7 days max
+    int count = 0;
+    for (String date in _savedDates) {
+      if (count >= 7) break;
+      
+      final info = await LocalStorageService.getDailyUsage(date);
+      if (info != null) {
+        final features = DailyUsageFeatures.fromRawUsageJson(info.toJson());
+        
+        // Run Inference
+        final result = MLDataService.mockInference(features.toMLVector());
+        outputs.add(ModelOutput.fromMap(result));
+        
+        count++;
+      }
+    }
+    
+    // Reverse to chronological order (oldest -> newest) for trend analysis
+    // Assuming _savedDates is sorted DESC
+    outputs = outputs.reversed.toList();
+
+    final summary = WeeklyAnalyzer.computeSummary(outputs);
+    
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => WeeklyInsightsScreen(
+            summary: summary,
+            dateRange: "Dynamic Analysis",
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Saved Records'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.analytics), // Insights Icon
+            tooltip: 'Open Weekly Insights',
+            onPressed: !_isLoading && _savedDates.isNotEmpty ? _openWeeklyInsights : null,
+          ),
           IconButton(
             icon: const Icon(Icons.model_training), // Icon for Training
             tooltip: 'Train Model',

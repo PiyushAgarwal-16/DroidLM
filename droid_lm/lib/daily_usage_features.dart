@@ -227,8 +227,8 @@ class DailyUsageFeatures {
     // 10. Usage Concentration (Top 1 Ratio)
     double usageConcentration = top1Ratio;
 
-    // Clamp all ratios to 0-1 just in case of any floating point weirdness or data anomalies
-    return [
+    // Base 10 Features
+    List<double> baseFeatures = [
       normTotal,
       morningRatio.clamp(0.0, 1.0),
       afternoonRatio.clamp(0.0, 1.0),
@@ -240,6 +240,14 @@ class DailyUsageFeatures {
       normActiveApps,
       usageConcentration.clamp(0.0, 1.0),
     ];
+
+    // PAD TO 34 FEATURES
+    // The ML model expects 34 features per day (to support future expansion).
+    // Currently, we only have 10 defined. We pad the remaining 24 with zeros.
+    int paddingSize = 34 - baseFeatures.length;
+    List<double> padding = List.filled(paddingSize, 0.0);
+
+    return [...baseFeatures, ...padding];
   }
   /// Computes a pseudo-label (0.0 - 1.0) for self-supervised training.
   /// 
@@ -270,6 +278,25 @@ class DailyUsageFeatures {
     double label = (0.6 * usageConcentration) + (0.4 * topApp1Ratio);
     
     return label.clamp(0.0, 1.0);
+  }
+
+  /// Computes a heuristic Distraction Score (0.0 - 1.0) for the second target.
+  /// 
+  /// Logic: High distraction is correlated with high number of active apps (switching)
+  /// and high morning usage (often non-productive scrolling).
+  double computeDistractionScore() {
+    double safeTotal = totalMinutes > 0 ? totalMinutes.toDouble() : 1.0;
+    
+    // Normalized Active Apps (Max 20)
+    double normActiveApps = (numberOfActiveApps / 20.0).clamp(0.0, 1.0);
+    
+    // Morning Ratio
+    double morningRatio = morningMinutes / safeTotal;
+    
+    // Heuristic Formula
+    double score = (normActiveApps * 0.5) + (morningRatio * 0.3);
+    
+    return score.clamp(0.0, 1.0);
   }
 }
 

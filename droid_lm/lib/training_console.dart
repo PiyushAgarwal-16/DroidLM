@@ -140,11 +140,35 @@ class _TrainingConsolePageState extends State<TrainingConsolePage> {
     });
 
     try {
-      // 1. Prepare Data
-      final features = widget.trainingData.map((d) => d.toMLVector()).toList();
-      final labels = widget.trainingData.map((d) => d.computePseudoLabel()).toList();
+      // 1. Prepare Data (Temporal Windowing)
+      // Sort by date to ensure correct time sequence
+      final sortedData = List<DailyUsageFeatures>.from(widget.trainingData)
+        ..sort((a, b) => a.date.compareTo(b.date));
+      
+      List<List<double>> features = [];
+      List<List<double>> labels = [];
+      
+      for (int i = 0; i < sortedData.length; i++) {
+        // Construct 3-day window: [T-2, T-1, T]
+        // If we don't have enough history, replicate the first available day (Padding)
+        List<double> dayT2 = (i - 2 >= 0) ? sortedData[i-2].toMLVector() : sortedData[i].toMLVector();
+        List<double> dayT1 = (i - 1 >= 0) ? sortedData[i-1].toMLVector() : sortedData[i].toMLVector();
+        List<double> dayT0 = sortedData[i].toMLVector();
+        
+        // Flatten (34 * 3 = 102 features)
+        List<double> windowedInput = [...dayT2, ...dayT1, ...dayT0];
+        
+        // Target: [HabitScore, DistractionScore]
+        List<double> target = [
+          sortedData[i].computePseudoLabel(),
+          sortedData[i].computeDistractionScore()
+        ];
+        
+        features.add(windowedInput);
+        labels.add(target);
+      }
 
-      setState(() => _logs += "Sent ${features.length} samples to Android layer...\n");
+      setState(() => _logs += "Sent ${features.length} windowed samples (Input 102, Target 2) to Android...\n");
 
       // 2. Call Native Layer
       // Note: Current native impl is blocking and returns full string at end.
