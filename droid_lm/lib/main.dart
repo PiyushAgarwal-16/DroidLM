@@ -150,15 +150,18 @@ class LocalStorageService {
   }
 
   /// Sync data from native to local storage
-  /// Returns a log of what happened
-  static Future<String> syncDataFromNative() async {
+  /// [forceSync]: If true, overwrites existing data for the same day.
+  /// Returns a log of what happened.
+  static Future<String> syncDataFromNative({bool forceSync = false}) async {
     final stats = await UsageStatsService.getDailyUsageStats();
     int savedCount = 0;
     int skippedCount = 0;
     
     for (var day in stats) {
       bool exists = await hasDataForDate(day.date);
-      if (!exists) {
+      
+      // Save if forced OR if it doesn't exist
+      if (forceSync || !exists) {
         await saveDailyUsage(day);
         savedCount++;
       } else {
@@ -166,7 +169,7 @@ class LocalStorageService {
       }
     }
     
-    return "Synced: Saved $savedCount days, Skipped $skippedCount existing days.";
+    return "Synced: Saved $savedCount days, Skipped $skippedCount existing days (ForceSync: $forceSync).";
   }
 
   /// Saves daily usage data for a specific date
@@ -231,6 +234,12 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
   bool _hasPermission = false;
   List<DailyUsageInfo> _dailyStats = [];
   bool _isLoading = false;
+  
+  // Demo State
+  bool _forceSyncDemo = false;
+  String? _lastSyncResult;
+  bool _isSyncing = false;
+  Color _resultColor = Colors.black;
 
   @override
   void initState() {
@@ -253,7 +262,10 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
   }
 
   Future<void> _checkPermissionAndFetchStats() async {
-    setState(() => _isLoading = true);
+    // Only show full loader if we have no data
+    if (_dailyStats.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     
     final hasPermission = await UsageStatsService.hasUsageAccess();
     
@@ -279,16 +291,26 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
     }
   }
 
-  Future<void> _handleSync() async {
-    setState(() => _isLoading = true);
-    final message = await LocalStorageService.syncDataFromNative();
-    setState(() => _isLoading = false);
+  Future<void> _handleSync({bool force = false}) async {
+    setState(() {
+      _isSyncing = true;
+      _lastSyncResult = null;
+    });
+
+    final message = await LocalStorageService.syncDataFromNative(forceSync: force);
+    
+    // Determine color: Green if we actually saved something (not 0 days/skipped only)
+    bool savedData = !message.contains("Saved 0 days");
+    final color = savedData ? Colors.green.shade700 : Colors.grey.shade600;
+
+    setState(() {
+      _isSyncing = false;
+      _lastSyncResult = message;
+      _resultColor = color;
+    });
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      // Refresh view
+      // Refresh view (silently update list)
       _checkPermissionAndFetchStats();
     }
   }
@@ -311,8 +333,9 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
           ),
           IconButton(
             icon: const Icon(Icons.sync),
-            tooltip: 'Sync Usage Data',
-            onPressed: !_isLoading && _hasPermission ? _handleSync : null,
+            tooltip: 'Tap to Sync / Long Press to Force',
+            onPressed: !_isLoading && _hasPermission ? () => _handleSync(force: false) : null,
+            onLongPress: !_isLoading && _hasPermission ? () => _handleSync(force: true) : null,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -358,16 +381,87 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
       );
     }
 
-    if (_dailyStats.isEmpty) {
-      return const Center(child: Text("No usage data found."));
-    }
+    return Column(
+      children: [
+        // DEMO CONTROLS
+        Card(
+          margin: const EdgeInsets.all(12),
+          elevation: 2,
+          color: Colors.blue.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: [
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                     const Text(
+                       "Force Re-sync (Demo)", 
+                       style: TextStyle(fontWeight: FontWeight.bold)
+                     ),
+                     Switch(
+                       value: _forceSyncDemo,
+                       onChanged: (val) => setState(() => _forceSyncDemo = val),
+                     )
+                   ],
+                 ),
+                 SizedBox(
+                   width: double.infinity,
+                   child: ElevatedButton.icon(
+                     icon: _isSyncing 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.sync),
+                     label: Text(_isSyncing ? "Syncing..." : "Sync Usage Data"),
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: Colors.blue,
+                       foregroundColor: Colors.white,
+                     ),
+                     onPressed: _isSyncing ? null : () => _handleSync(force: _forceSyncDemo),
+                   ),
+                 ),
+                 const SizedBox(height: 8),
+                 AnimatedSwitcher(
+                   duration: const Duration(milliseconds: 500),
+                   child: _lastSyncResult != null
+                       ? Container(
+                           key: ValueKey(_lastSyncResult), // helper for animation
+                           padding: const EdgeInsets.all(8),
+                           width: double.infinity,
+                           decoration: BoxDecoration(
+                             color: Colors.white,
+                             borderRadius: BorderRadius.circular(4),
+                             border: Border.all(color: _resultColor.withOpacity(0.3)),
+                           ),
+                           child: Text(
+                             _lastSyncResult!,
+                             style: TextStyle(
+                               fontSize: 12, 
+                               fontWeight: FontWeight.bold,
+                               color: _resultColor
+                             ),
+                             textAlign: TextAlign.center,
+                           ),
+                         )
+                       : const SizedBox.shrink(),
+                 )
+              ],
+            ),
+          ),
+        ),
 
-    return ListView.builder(
-      itemCount: _dailyStats.length,
-      itemBuilder: (context, index) {
-        final dayInfo = _dailyStats[index];
-        return _buildDaySection(dayInfo);
-      },
+        // STATS LIST
+        Expanded(
+          child: _dailyStats.isEmpty
+              ? const Center(child: Text("No usage data found."))
+              : ListView.builder(
+                  itemCount: _dailyStats.length,
+                  itemBuilder: (context, index) {
+                    final dayInfo = _dailyStats[index];
+                    return _buildDaySection(dayInfo);
+                  },
+                ),
+        ),
+      ],
     );
   }
 
