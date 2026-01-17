@@ -31,11 +31,13 @@ class DailyUsageFeatures {
   /// Note: Currently defaults to 0 as native API only provides daily totals.
   final int nightMinutes;
 
+  /// Total number of unique apps used that day (with >0 minutes)
+  final int numberOfActiveApps;
+
   /// The single most used app package name
   final String dominantApp;
 
   /// The time window with the highest usage (Morning/Afternoon/Evening/Night)
-  /// Note: Currently defaults to "Unknown" due to lack of hourly data.
   final String dominantTimeWindow;
 
   DailyUsageFeatures({
@@ -47,6 +49,7 @@ class DailyUsageFeatures {
     this.afternoonMinutes = 0,
     this.eveningMinutes = 0,
     this.nightMinutes = 0,
+    this.numberOfActiveApps = 0,
     required this.dominantApp,
     this.dominantTimeWindow = 'Unknown',
   });
@@ -80,6 +83,9 @@ class DailyUsageFeatures {
       totalMinutesDouble += app.minutes;
     }
     int totalMinutes = totalMinutesDouble.round();
+    
+    // Count active apps (minutes > 0)
+    int numberOfActiveApps = parsedApps.where((a) => a.minutes > 0).length;
 
     // 2. Top 3 Apps by Minutes
     // Sort descending by usage
@@ -161,6 +167,7 @@ class DailyUsageFeatures {
       afternoonMinutes: afternoonMinutes,
       eveningMinutes: eveningMinutes,
       nightMinutes: nightMinutes,
+      numberOfActiveApps: numberOfActiveApps,
       dominantApp: dominantApp,
       dominantTimeWindow: dominantTimeWindow,
     );
@@ -177,9 +184,62 @@ class DailyUsageFeatures {
       'afternoonMinutes': afternoonMinutes,
       'eveningMinutes': eveningMinutes,
       'nightMinutes': nightMinutes,
+      'numberOfActiveApps': numberOfActiveApps,
       'dominantApp': dominantApp,
       'dominantTimeWindow': dominantTimeWindow,
     };
+  }
+
+  /// Converts the features into a numeric List<double> vector for ML model input.
+  /// 
+  /// Normalized Feature Vector Definition:
+  /// 1. [0] Total Minutes (0.0 - 1.0) -> Normalized assuming max 600 mins.
+  /// 2. [1] Morning Minutes Ratio (0.0 - 1.0) -> morningMinutes / totalMinutes
+  /// 3. [2] Afternoon Minutes Ratio (0.0 - 1.0) -> afternoonMinutes / totalMinutes
+  /// 4. [3] Evening Minutes Ratio (0.0 - 1.0) -> eveningMinutes / totalMinutes
+  /// 5. [4] Night Minutes Ratio (0.0 - 1.0) -> nightMinutes / totalMinutes
+  /// 6. [5] Top App 1 Ratio (0.0 - 1.0) -> topApp1Minutes / totalMinutes
+  /// 7. [6] Top App 2 Ratio (0.0 - 1.0) -> topApp2Minutes / totalMinutes
+  /// 8. [7] Top App 3 Ratio (0.0 - 1.0) -> topApp3Minutes / totalMinutes
+  /// 9. [8] Active Apps Count (0.0 - 1.0) -> Normalized assuming max 20 apps.
+  /// 10. [9] Usage Concentration (0.0 - 1.0) -> topApp1Minutes / totalMinutes (Same as #6, but explicitly requested)
+  List<double> toMLVector() {
+    // Avoid division by zero
+    double safeTotal = totalMinutes > 0 ? totalMinutes.toDouble() : 1.0; 
+
+    // 1. Total Minutes normalized (Max 600)
+    double normTotal = (totalMinutes / 600.0).clamp(0.0, 1.0);
+
+    // 2-5. Time Window Ratios
+    double morningRatio = morningMinutes / safeTotal;
+    double afternoonRatio = afternoonMinutes / safeTotal;
+    double eveningRatio = eveningMinutes / safeTotal;
+    double nightRatio = nightMinutes / safeTotal;
+
+    // 6-8. Top Apps Ratios
+    double top1Ratio = topAppMinutes.isNotEmpty ? topAppMinutes[0] / safeTotal : 0.0;
+    double top2Ratio = topAppMinutes.length > 1 ? topAppMinutes[1] / safeTotal : 0.0;
+    double top3Ratio = topAppMinutes.length > 2 ? topAppMinutes[2] / safeTotal : 0.0;
+
+    // 9. Number of Active Apps normalized (Max 20)
+    double normActiveApps = (numberOfActiveApps / 20.0).clamp(0.0, 1.0);
+
+    // 10. Usage Concentration (Top 1 Ratio)
+    double usageConcentration = top1Ratio;
+
+    // Clamp all ratios to 0-1 just in case of any floating point weirdness or data anomalies
+    return [
+      normTotal,
+      morningRatio.clamp(0.0, 1.0),
+      afternoonRatio.clamp(0.0, 1.0),
+      eveningRatio.clamp(0.0, 1.0),
+      nightRatio.clamp(0.0, 1.0),
+      top1Ratio.clamp(0.0, 1.0),
+      top2Ratio.clamp(0.0, 1.0),
+      top3Ratio.clamp(0.0, 1.0),
+      normActiveApps,
+      usageConcentration.clamp(0.0, 1.0),
+    ];
   }
 }
 

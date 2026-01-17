@@ -439,7 +439,59 @@ class MLDataService {
         debugPrint("  ${jsonEncode(featureSet[i].toMap())}$comma");
     }
     debugPrint("]");
+
+    // 4. Print Numeric Vectors
+    debugPrint("\n--- NUMERIC ML VECTORS (Normalized) ---");
+    debugPrint("[");
+    for (int i = 0; i < featureSet.length; i++) {
+        final comma = i < featureSet.length - 1 ? ',' : '';
+        debugPrint("  ${featureSet[i].toMLVector()}$comma");
+    }
+    debugPrint("]");
+
+    // 5. Mock Model Inference output
+    debugPrint("\n--- MOCK MODEL OUTPUT (Simulation) ---");
+    for (int i = 0; i < featureSet.length; i++) {
+      final features = featureSet[i];
+      final vector = features.toMLVector();
+      final result = mockInference(vector);
+      
+      debugPrint("${features.date} -> Habituality: ${result['habituality']!.toStringAsFixed(2)}, Distraction: ${result['distraction']!.toStringAsFixed(2)}, Stability: ${result['stability']}");
+    }
+
     debugPrint("-------------------------------------------");
+  }
+
+  /// Simulates ML model inference using the numeric input vector.
+  /// 
+  /// THIS IS A PLACEHOLDER.
+  /// In the real implementation, this function will:
+  /// 1. Load the TFLite model.
+  /// 2. Pass [inputVector] to the interpreter.
+  /// 3. Return the actual tensor outputs.
+  static Map<String, dynamic> mockInference(List<double> inputVector) {
+    // Generate deterministic-looking "fake" scores based on input features
+    // just to verify the pipeline works.
+    
+    // Feature [0] is normalized total minutes.
+    // Feature [8] is normalized active apps count.
+    
+    double habitualityScore = (inputVector[0] * 0.7 + 0.2).clamp(0.0, 1.0);
+    double distractionScore = (inputVector[8] * 0.5 + inputVector[1] * 0.3).clamp(0.0, 1.0); // Apps + Morning usage
+    
+    // Determine stability class based on arbitrary logic for demo
+    String stabilityClass = "Stable";
+    if (distractionScore > 0.7) {
+      stabilityClass = "Chaotic";
+    } else if (habitualityScore < 0.4) {
+      stabilityClass = "Drifting";
+    }
+
+    return {
+      'habituality': habitualityScore,
+      'distraction': distractionScore,
+      'stability': stabilityClass,
+    };
   }
 }
 
