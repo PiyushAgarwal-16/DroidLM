@@ -241,6 +241,36 @@ class DailyUsageFeatures {
       usageConcentration.clamp(0.0, 1.0),
     ];
   }
+  /// Computes a pseudo-label (0.0 - 1.0) for self-supervised training.
+  /// 
+  /// Formula: label = 0.6 * usageConcentration + 0.4 * topApp1Ratio
+  /// 
+  /// SELF-SUPERVISION EXPLANATION:
+  /// We assume that high "Habituality" correlates strongly with "Usage Concentration".
+  /// If a user spends most of their time in just 1 app (high concentration), 
+  /// it is likely a habitual behavior rather than a diverse/exploratory session.
+  /// By generating this target automatically, we can pre-train the model without
+  /// asking the user to manually tag every day.
+  double computePseudoLabel() {
+    if (totalMinutes == 0) return 0.0;
+    
+    // Safety check for empty lists
+    if (topAppMinutes.isEmpty) return 0.0;
+
+    double safeTotal = totalMinutes.toDouble();
+    
+    // Ratio of time spent in the #1 most used app
+    double topApp1Ratio = topAppMinutes[0] / safeTotal;
+    
+    // Usage Concentration implies how "focused" the usage is.
+    // simpler definition for now: same as topApp1Ratio.
+    double usageConcentration = topApp1Ratio;
+
+    // Combined metric
+    double label = (0.6 * usageConcentration) + (0.4 * topApp1Ratio);
+    
+    return label.clamp(0.0, 1.0);
+  }
 }
 
 /// Helper class for internal sorting

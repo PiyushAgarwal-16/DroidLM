@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:droid_lm/daily_usage_features.dart';
+import 'package:droid_lm/training_console.dart';
 
 void main() {
   runApp(const MyApp());
@@ -118,6 +119,20 @@ class UsageStatsService {
     } on PlatformException catch (e) {
       debugPrint("Failed to get usage stats: '${e.message}'.");
       return [];
+    }
+  }
+
+  /// Triggers on-device training via Native Layer
+  static Future<String> trainHabitModel(List<List<double>> features, List<double> labels) async {
+    try {
+      // Pass features and labels as arguments
+      final result = await platform.invokeMethod('trainHabitModel', {
+        "features": features,
+        "labels": labels,
+      });
+      return result.toString();
+    } on PlatformException catch (e) {
+      return "Training Failed: ${e.message}";
     }
   }
 }
@@ -523,10 +538,26 @@ class _SavedRecordsPageState extends State<SavedRecordsPage> {
   }
 
   Future<void> _handleMLProcessing() async {
-     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Processing features... Check Console.')),
-      );
-      await MLDataService.processAndPrintFeatures();
+      setState(() => _isLoading = true);
+      
+      // Load all data
+      List<DailyUsageFeatures> trainingData = [];
+      for (String date in _savedDates) {
+        final info = await LocalStorageService.getDailyUsage(date);
+        if (info != null) {
+          trainingData.add(DailyUsageFeatures.fromRawUsageJson(info.toJson()));
+        }
+      }
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TrainingConsolePage(trainingData: trainingData),
+          ),
+        );
+      }
   }
 
   @override
@@ -536,8 +567,8 @@ class _SavedRecordsPageState extends State<SavedRecordsPage> {
         title: const Text('Saved Records'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.psychology), // Icon for ML/Intelligence
-            tooltip: 'Process for ML',
+            icon: const Icon(Icons.model_training), // Icon for Training
+            tooltip: 'Train Model',
             onPressed: !_isLoading && _savedDates.isNotEmpty ? _handleMLProcessing : null,
           ),
         ],

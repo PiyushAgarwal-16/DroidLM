@@ -16,6 +16,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
+import java.io.FileInputStream
+import org.tensorflow.lite.Interpreter
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * MainActivity handles Flutter MethodChannel communication for Usage Access permissions
@@ -54,6 +60,42 @@ class MainActivity : FlutterActivity() {
                 "getDailyUsageStats" -> {
                     // Return daily usage stats as JSON string
                     result.success(getDailyUsageStats())
+                }
+                "trainHabitModel" -> {
+                    // Extract args safely on Main Thread
+                    val featuresArg = call.argument<List<Any>>("features")
+                    val labelsArg = call.argument<List<Double>>("labels")
+                    
+                    if (featuresArg != null && labelsArg != null) {
+                        try {
+                             // Safely convert generic list to List<Double>
+                             // Doing this conversion on main thread is fast enough, 
+                             // but we can also move it to bg if strictly needed. 
+                             // For safety, let's keep arg extraction here.
+                             val features = featuresArg.map { 
+                                 (it as List<*>).map { num -> (num as Number).toDouble() } 
+                             }
+                             val labels = labelsArg.map { it.toDouble() }
+                             
+                             // Run training on background thread to avoid freezing UI
+                             Thread {
+                                 try {
+                                     val output = trainHabitModel(features, labels)
+                                     runOnUiThread {
+                                         result.success(output)
+                                     }
+                                 } catch (e: Exception) {
+                                     runOnUiThread {
+                                         result.error("TRAIN_ERROR", e.message, null)
+                                     }
+                                 }
+                             }.start()
+                        } catch (e: Exception) {
+                             result.error("ARG_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Features or labels missing", null)
+                    }
                 }
                 else -> {
                     result.notImplemented()
@@ -209,5 +251,80 @@ class MainActivity : FlutterActivity() {
         }
 
         return jsonArray.toString()
+    }
+
+    /**
+     * Trains the local TFLite model with the provided behavioral data.
+     */
+    private fun trainHabitModel(features: List<List<Double>>, labels: List<Double>): String {
+        try {
+            // 1. Load Model
+            val modelBuffer = loadModelFile("trainable_micro_model.tflite")
+            val interpreter = org.tensorflow.lite.Interpreter(modelBuffer)
+            
+            // 2. Prepare Data Buffers
+            // Input: [BatchSize=1, 10 Features] for simple iteration
+            // We train one sample at a time to keep memory usage minimal (Stochastic Gradient Descent)
+            
+            val NUM_EPOCHS = 3
+            val NUM_FEATURES = 10
+            var totalLoss = 0.0f
+            
+            val inputBuffer = java.nio.ByteBuffer.allocateDirect(4 * NUM_FEATURES).order(java.nio.ByteOrder.nativeOrder())
+            val targetBuffer = java.nio.ByteBuffer.allocateDirect(4 * 1).order(java.nio.ByteOrder.nativeOrder())
+            
+            // Output buffer for "loss" (returned by train signature)
+            val outputMap = mutableMapOf<String, Any>()
+            val lossBuffer = java.nio.ByteBuffer.allocateDirect(4 * 1).order(java.nio.ByteOrder.nativeOrder())
+            outputMap["loss"] = lossBuffer
+
+            val sb = StringBuilder()
+            
+            for (epoch in 1..NUM_EPOCHS) {
+                var epochLoss = 0.0f
+                
+                for (i in features.indices) {
+                    val sample = features[i]
+                    val label = labels[i]
+                    
+                    // Fill Buffers
+                    inputBuffer.rewind()
+                    for (v in sample) {
+                        inputBuffer.putFloat(v.toFloat())
+                    }
+                    
+                    targetBuffer.rewind()
+                    targetBuffer.putFloat(label.toFloat())
+                    
+                    lossBuffer.rewind()
+                    
+                    // Run "train" signature
+                    val inputs = mapOf("x" to inputBuffer, "y" to targetBuffer)
+                    interpreter.runSignature(inputs, outputMap, "train")
+                    
+                    lossBuffer.rewind()
+                    epochLoss += lossBuffer.float
+                }
+                
+                val avgLoss = epochLoss / features.size
+                sb.append("Epoch $epoch Loss: $avgLoss\n")
+                totalLoss = avgLoss // track last
+            }
+            
+            interpreter.close()
+            return "Training Complete.\n$sb"
+            
+        } catch (e: Exception) {
+            return "Error during training: ${e.message}"
+        }
+    }
+
+    private fun loadModelFile(modelName: String): java.nio.MappedByteBuffer {
+        val fileDescriptor = assets.openFd(modelName)
+        val inputStream = java.io.FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        val startOffset = fileDescriptor.startOffset
+        val declaredLength = fileDescriptor.declaredLength
+        return fileChannel.map(java.nio.channels.FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
     }
 }
