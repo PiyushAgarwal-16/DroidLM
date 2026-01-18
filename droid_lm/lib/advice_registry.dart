@@ -1,5 +1,6 @@
 import 'package:droid_lm/advice_category.dart';
 import 'package:droid_lm/advice_template.dart';
+import 'package:droid_lm/advice_narrative_builder.dart';
 
 /// Registry of all available Advice Templates in the system.
 ///
@@ -15,41 +16,57 @@ class AdviceRegistry {
   static List<AdviceTemplate> getAllTemplates() {
     return [
       // 1. Morning Ritual
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'habit_morning_ritual',
         category: AdviceCategory.habit,
         title: 'Morning Ritual Detected',
-        bodyTemplate: "It looks like checking {app} is part of your morning flow around {timeWindow}. Is this intentional?",
-        placeholders: ['app', 'timeWindow'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "You {qualifier} check {app} around {timeWindow} in the morning.",
+          why: "Repetitive actions early in the day often set the tone for your productivity.",
+          suggestion: "Is this how you intend to start your day?",
+        ),
+        placeholders: ['app', 'timeWindow', 'qualifier'],
         confidenceWeight: 0.8,
       ),
 
       // 2. Evening Pattern
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'habit_evening_pattern',
         category: AdviceCategory.habit,
         title: 'Evening Consistency',
-        bodyTemplate: "You tend to use {app} quite regularly during the evenings. Regular patterns can often build strong habits.",
-        placeholders: ['app'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "You {qualifier} use {app} during the evenings.",
+          why: "Regular patterns can help you unwind, but screen usage before bed affects sleep quality.",
+          suggestion: "Consider if this aligns with your wind-down goals.",
+        ),
+        placeholders: ['app', 'qualifier'],
         confidenceWeight: 0.7,
       ),
 
       // 3. Frequent Checks
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'habit_frequent_checks',
         category: AdviceCategory.habit,
         title: 'High Frequency Access',
-        bodyTemplate: "We noticed you opened {app} {count} times today. Frequent checking can sometimes become automatic.",
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "We noticed you opened {app} {count} times today.",
+          why: "Frequent checking often happens automatically when we seek small dopamine hits.",
+          suggestion: "Try pausing for a moment before the next launch.",
+        ),
         placeholders: ['app', 'count'],
         confidenceWeight: 0.85,
       ),
 
       // 4. Stable Usage
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'habit_stable_usage',
         category: AdviceCategory.habit,
         title: 'Steady Baseline',
-        bodyTemplate: "Your time spent on {app} is remarkably consistent, averaging about {minutes} minutes daily. This suggests a well-formed habit.",
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "Your time on {app} is consistent, averaging about {minutes} minutes daily.",
+          why: "Consistency is key to forming habits, whether positive or negative.",
+          suggestion: "Reflect on whether this habit serves your long-term goals.",
+        ),
         placeholders: ['app', 'minutes'],
         confidenceWeight: 0.65,
       ),
@@ -57,73 +74,104 @@ class AdviceRegistry {
       // --- DISTRACTION CATEGORY ---
 
       // 5. Focus Fragmentation
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'distraction_focus_fragmentation',
         category: AdviceCategory.distraction,
         title: 'Attention Switching',
-        bodyTemplate: "Rapidly switching between {app1} and {app2} can fragment your attention span, making it harder to return to deep focus.",
-        placeholders: ['app1', 'app2'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "Rapidly switching between {app1} and {app2} can fragment your attention span.",
+          why: "Constant context switching increases cognitive load and drains mental energy.",
+          suggestion: "{suggestionPrefix} grouping your usage into dedicated blocks.",
+        ),
+        placeholders: ['app1', 'app2', 'suggestionPrefix'],
         confidenceWeight: 0.85,
       ),
 
       // 6. Dominant App Impact
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'distraction_dominant_app',
         category: AdviceCategory.distraction,
         title: 'High Concentration',
-        bodyTemplate: "{app} accounted for {percentage}% of your active screen time today. Such high concentration might be displacing other intentions.",
-        placeholders: ['app', 'percentage'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "{app} accounted for {percentage}% of your active screen time today.",
+          why: "High concentration here might be displacing other intentions or rest.",
+          suggestion: "{suggestionPrefix} reflecting if this aligns with your plans.",
+        ),
+        placeholders: ['app', 'percentage', 'suggestionPrefix'],
         confidenceWeight: 0.8,
       ),
 
       // 7. Deep Dive / Autopilot
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'distraction_deep_dive',
         category: AdviceCategory.distraction,
         title: 'Extended Session',
-        bodyTemplate: "You spent {minutes} minutes in {app} without a break. Long, uninterrupted sessions can sometimes blur into autopilot mode.",
-        placeholders: ['app', 'minutes'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "You spent {minutes} minutes in {app} without a break.",
+          why: "Long, continuous sessions can sometimes blur into 'autopilot' mode.",
+          suggestion: "{suggestionPrefix} taking a short stretch break to reset.",
+        ),
+        placeholders: ['app', 'minutes', 'suggestionPrefix'],
         confidenceWeight: 0.75,
       ),
 
       // 8. Rapid Checking
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'distraction_rapid_checking',
         category: AdviceCategory.distraction,
         title: 'Micro-Interactions',
-        bodyTemplate: "We detected {count} short sessions in {app} recently. Frequent micro-interactions can inadvertently increase cognitive load.",
-        placeholders: ['app', 'count'],
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "We detected {count} short sessions in {app} recently.",
+          why: "Frequent micro-interactions often happen subconsciously.",
+          suggestion: "{suggestionPrefix} leaving the phone out of reach for 20 minutes.",
+        ),
+        placeholders: ['app', 'count', 'suggestionPrefix'],
         confidenceWeight: 0.9,
       ),
 
       // --- POSITIVE CATEGORY ---
+      // Positive Feedback Psychology:
+      // Acknowledging "good" behavior (stability, balance) is crucial for retention.
+      // It validates the user's effort and prevents the app from feeling like a "nag".
 
       // 9. Balanced Usage
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'positive_balanced_diet',
         category: AdviceCategory.positive,
         title: 'Balanced Diet',
-        bodyTemplate: "Your digital usage today looks quite balanced, with no single app dominating your attention.",
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "Your digital usage today looks quite balanced, with no single app dominating your attention.",
+          why: "A varied digital diet helps reduce cognitive fatigue.",
+          suggestion: "Keep enjoying this variety.",
+        ),
         placeholders: [],
         confidenceWeight: 0.7,
       ),
 
       // 10. Focus Flow
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'positive_focus_flow',
         category: AdviceCategory.positive,
         title: 'Good Focus Flow',
-        bodyTemplate: "You've maintained good focus intervals today without excessive context switching.",
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "You've maintained good focus intervals today without excessive context switching.",
+          why: "Uninterrupted time allows for deeper thinking and better problem solving.",
+          suggestion: "This is a great flow to maintain.",
+        ),
         placeholders: [],
         confidenceWeight: 0.8,
       ),
 
       // 11. Intentional Checks
-      const AdviceTemplate(
+      AdviceTemplate(
         id: 'positive_intentional_checks',
         category: AdviceCategory.positive,
         title: 'Intentional Access',
-        bodyTemplate: "Your app launches have been purposeful today, avoiding the trap of rapid checking.",
+        bodyTemplate: AdviceNarrativeBuilder.build(
+          insight: "Your app launches have been purposeful today, avoiding the trap of rapid checking.",
+          why: "Intentionality puts you back in control of your device.",
+          suggestion: "Great job staying in charge.",
+        ),
         placeholders: [],
         confidenceWeight: 0.65,
       ),

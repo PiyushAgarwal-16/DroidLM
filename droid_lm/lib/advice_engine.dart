@@ -6,6 +6,7 @@ import 'package:droid_lm/advice_template.dart';
 import 'package:droid_lm/advice_trigger_context.dart';
 import 'package:droid_lm/advice_trigger_rule.dart';
 import 'package:droid_lm/generated_advice.dart';
+import 'package:droid_lm/advice_wording_helper.dart';
 
 /// The core engine responsible for evaluating user behavior and selecting
 /// appropriate advice.
@@ -101,6 +102,11 @@ class AdviceEngine {
   GeneratedAdvice _resolveTemplate(
       AdviceTemplate template, AdviceTriggerContext context, double ruleScore) {
     
+    // Calculate a confidence qualifier (e.g., "often", "occasionally") 
+    // to make the advice sound natural and honest about its certainty.
+    String qualifier = AdviceWordingHelper.confidenceQualifier(ruleScore);
+    String suggestionPrefix = AdviceWordingHelper.suggestionPrefix(ruleScore);
+
     // Prepare values for placeholders.
     // We map keys used in AdviceTemplate (e.g., {app}) to the actual context data.
     // If specific data is missing (e.g., dominantApp is empty), we use safe fallbacks.
@@ -115,7 +121,11 @@ class AdviceEngine {
       // 3. Trend Direction (e.g., "Increasing", "Stable")
       'trend': context.habitTrend.isNotEmpty ? context.habitTrend : 'stable',
       
-      // 4. Fallbacks for other potential keys
+      // 4. Dynamic Qualifiers
+      'qualifier': qualifier,
+      'suggestionPrefix': suggestionPrefix,
+      
+      // 5. Fallbacks for other potential keys
       'app2': 'other apps', 
       'count': 'multiple', 
       'minutes': 'several', 

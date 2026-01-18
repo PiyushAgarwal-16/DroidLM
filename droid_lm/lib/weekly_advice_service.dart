@@ -1,5 +1,6 @@
 import 'package:droid_lm/advice_engine.dart';
 import 'package:droid_lm/advice_trigger_context.dart';
+import 'package:droid_lm/advice_category.dart';
 import 'package:droid_lm/advice_trigger_rule.dart';
 import 'package:droid_lm/behavior_analysis.dart';
 import 'package:droid_lm/distraction_advice_rule.dart';
@@ -84,19 +85,65 @@ class WeeklyAdviceService {
 
     // 3. Run the Engine
     final engine = AdviceEngine(rules: rules);
-    final results = engine.evaluate(context);
+    List<GeneratedAdvice> candidates = engine.evaluate(context);
+
+    // 4. Redundancy Check
+    // Redundancy Psychology:
+    // If an AI repeats the exact same advice (e.g., "Reduce Instagram") week after week,
+    // the user tunes it out (Alarm Fatigue).
+    // We suppress repetitive advice unless the signal has gotten significantly stronger (+10%),
+    // indicating the problem is worsening or the habit is cementing further.
+    //
+    // Note: We use in-memory history here. In production, this would be persisted.
+    List<GeneratedAdvice> filteredResults = [];
+    
+    // Create a new log for the current week to replace the old one
+    Map<AdviceCategory, double> currentWeekLog = {};
+
+    for (var advice in candidates) {
+      bool shouldShow = true;
+
+      if (_previousWeekLog.containsKey(advice.category)) {
+        double lastConfidence = _previousWeekLog[advice.category]!;
+        // Check for significant increase (e.g., +0.1)
+        if (advice.confidenceScore <= lastConfidence + 0.1) {
+          shouldShow = false;
+          print("WeeklyAdviceService: Suppressed redundant advice [${advice.category.name}]. Score ${advice.confidenceScore.toStringAsFixed(2)} vs Last ${lastConfidence.toStringAsFixed(2)}");
+        }
+      }
+
+      if (shouldShow) {
+        filteredResults.add(advice);
+        currentWeekLog[advice.category] = advice.confidenceScore;
+      }
+    }
+
+    // Fallback: If we filtered everything out, show the top original candidate anyway
+    // so the screen isn't empty.
+    if (candidates.isNotEmpty && filteredResults.isEmpty) {
+      filteredResults.add(candidates.first);
+      currentWeekLog[candidates.first.category] = candidates.first.confidenceScore;
+    }
 
     // Debug logging for transparency
     print("WeeklyAdviceService: Analysis [Days: $daysObserved] | Habit: ${summary.averageHabituality.toStringAsFixed(2)} | Distraction: ${summary.averageDistraction.toStringAsFixed(2)}");
-    print("WeeklyAdviceService: Generated ${results.length} advice items.");
-    for (var advice in results) {
+    print("WeeklyAdviceService: Generated ${filteredResults.length} advice items (filtered from ${candidates.length}).");
+    for (var advice in filteredResults) {
        print(" - [${advice.category.name}] ${advice.title}");
     }
 
-    // 4. Update Cache
+    // 5. Update Cache & History
     _lastGeneratedTime = DateTime.now();
-    _cachedAdvice = results;
+    _cachedAdvice = filteredResults;
+    
+    // Only update history if we actually generated new valid advice
+    if (filteredResults.isNotEmpty) {
+      _previousWeekLog = currentWeekLog;
+    }
 
-    return results;
+    return filteredResults;
   }
+
+  // Track the highest confidence score seen for each category in the previous generation.
+  static Map<AdviceCategory, double> _previousWeekLog = {};
 }
