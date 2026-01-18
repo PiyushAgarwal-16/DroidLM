@@ -1,322 +1,361 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="An Android app powered by a small on-device language model that understands your phone usage and gently suggests healthier screen-time habits."
-    />
-    <title>DroidLM - Private, On-Device Screen Time Insights</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
 
-  <body>
-    <!-- Hero Section -->
-    <header class="hero-section" id="hero">
-      <div class="container">
-        <nav class="navbar">
-          <div class="logo">DroidLM</div>
-          <ul class="nav-links">
-            <li><a href="#how-it-works">How it Works</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li>
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                >GitHub</a
-              >
-            </li>
-          </ul>
-          <div class="menu-toggle" id="mobile-menu">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-          </div>
-        </nav>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="An Android app powered by a small on-device language model that understands your phone usage and gently suggests healthier screen-time habits." />
+  <title>DroidLM - Private, On-Device Screen Time Insights</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-        <div class="hero-content">
-          <h1 class="hero-title">
-            Your phone learns your habits —
-            <span class="highlight">privately, offline.</span>
-          </h1>
-          <p class="hero-description">
-            An Android app powered by a small on-device language model that
-            understands your phone usage and gently suggests healthier
-            screen-time habits.
-          </p>
-          <div class="hero-actions">
-            <a href="https://storage.googleapis.com/droid-lm/droid-lm.apk" class="btn btn-primary">Download APK</a>
-            <a
-              href="https://github.com/PiyushAgarwal-16/DroidLM"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="btn btn-secondary"
-              >View on GitHub</a
-            >
-          </div>
+<body>
+  <!-- Hero Section -->
+  <header class="hero-section" id="hero">
+    <div class="container">
+      <nav class="navbar">
+        <div class="logo">DroidLM</div>
+        <ul class="nav-links">
+          <li><a href="#how-it-works">How it Works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+          </li>
+        </ul>
+        <div class="menu-toggle" id="mobile-menu">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
         </div>
-      </div>
-    </header>
+      </nav>
 
-    <!-- How It Works Section -->
-    <section class="how-it-works" id="how-it-works">
-      <div class="container">
-        <h2 class="section-title">How It Works</h2>
-        <p class="section-subtitle">
-          No internet. No cloud. No data leaves your phone.
+      <div class="hero-content">
+        <h1 class="hero-title">
+          Your phone learns your habits —
+          <span class="highlight">privately, offline.</span>
+        </h1>
+        <p class="hero-description">
+          An Android app powered by a small on-device language model that
+          understands your phone usage and gently suggests healthier
+          screen-time habits.
         </p>
-
-        <div class="steps-grid">
-          <div class="step-card">
-            <div class="step-icon">1</div>
-            <h3>Data Collection</h3>
-            <p>
-              Phone usage data is collected locally using Android's native APIs.
-            </p>
-          </div>
-          <div class="step-card">
-            <div class="step-icon">2</div>
-            <h3>Processing</h3>
-            <p>Data is converted into short, privacy-preserving prompts.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-icon">3</div>
-            <h3>Analysis</h3>
-            <p>
-              On-device Small Language Model (SLM) analyzes patterns offline.
-            </p>
-          </div>
-          <div class="step-card">
-            <div class="step-icon">4</div>
-            <h3>Nudges</h3>
-            <p>
-              Personalized, gently worded habit nudges are generated for you.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Key Features Section -->
-    <section class="features" id="features">
-      <div class="container">
-        <h2 class="section-title">Key Features</h2>
-        <div class="features-grid">
-          <div class="feature-item">
-            <h3>On-device SLM</h3>
-            <p>
-              Powered by a specialized Small Language Model running entirely on
-              your phone.
-            </p>
-          </div>
-          <div class="feature-item">
-            <h3>Fully Offline</h3>
-            <p>
-              Works without an internet connection. Your data never touches a
-              server.
-            </p>
-          </div>
-          <div class="feature-item">
-            <h3>Personalized Insights</h3>
-            <p>
-              Get daily screen-time insights tailored specifically to your usage
-              patterns.
-            </p>
-          </div>
-          <div class="feature-item">
-            <h3>Actionable Nudges</h3>
-            <p>
-              Receive short, practical suggestions to help improve your digital
-              wellbeing.
-            </p>
-          </div>
-          <div class="feature-item">
-            <h3>No Tracking, No Ads</h3>
-            <p>
-              Built for you, not for advertisers. Zero tracking, zero
-              advertisements.
-            </p>
-          </div>
-          <div class="feature-item">
-            <h3>Battery Efficient</h3>
-            <p>
-              Lightweight model optimized for battery life, running on mid-range
-              devices.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Why Small Language Model? -->
-    <section class="why-slm" id="why-slm">
-      <div class="container">
-        <h2 class="section-title">Why a Small Language Model?</h2>
-        <p class="section-description">
-          SLMs offer a perfect balance of intelligence and efficiency for mobile
-          devices.
-        </p>
-
-        <div class="comparison-container">
-          <div class="comparison-card slm-card">
-            <h3>SLM (On-Device)</h3>
-            <ul>
-              <li>✅ Faster inference on phones</li>
-              <li>✅ Lower memory usage</li>
-              <li>✅ Complete Privacy</li>
-              <li>✅ Deterministic outputs</li>
-            </ul>
-          </div>
-          <div class="comparison-card cloud-card">
-            <h3>Cloud AI</h3>
-            <ul>
-              <li>❌ Slower (latency)</li>
-              <li>❌ High data usage</li>
-              <li>❌ Privacy concerns</li>
-              <li>❌ Requires internet</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Privacy & Security -->
-    <section class="privacy" id="privacy">
-      <div class="container">
-        <h2 class="section-title">Privacy First Design</h2>
-        <div class="privacy-content">
-          <ul>
-            <li>
-              <strong>Android UsageStatsManager:</strong> We use standard
-              Android APIs to read usage data securely.
-            </li>
-            <li>
-              <strong>Local Processing:</strong> All analysis happens right on
-              your device's processor.
-            </li>
-            <li>
-              <strong>No Login Required:</strong> Just install and use. No
-              accounts, no passwords.
-            </li>
-            <li>
-              <strong>No Cloud APIs:</strong> We don't send API requests to
-              OpenAI, Google, or anyone else.
-            </li>
-            <li>
-              <strong>No Third-Party Analytics:</strong> We don't track how you
-              use the app.
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Screens / Demo Section -->
-    <!-- <section class="screens" id="screens">
-      <div class="container">
-        <h2 class="section-title">See it in Action</h2>
-        <div class="screens-grid">
-          <div class="screen-placeholder">
-            <span>App Dashboard</span>
-          </div>
-          <div class="screen-placeholder">
-            <span>Suggestion Screen</span>
-          </div>
-        </div>
-      </div>
-    </section> -->
-
-    <!-- Download Section -->
-    <section class="download" id="download">
-      <div class="container">
-        <h2 class="section-title">Try it Now</h2>
-        <p>Ready to take control of your screen time?</p>
         <div class="hero-actions">
           <a href="https://storage.googleapis.com/droid-lm/droid-lm.apk" class="btn btn-primary">Download APK</a>
-          <a
-            href="https://github.com/PiyushAgarwal-16/DroidLM"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn btn-secondary"
-            >GitHub Repository</a
-          >
-          <a href="#" class="btn btn-secondary">Documentation</a>
+          <a href="https://github.com/PiyushAgarwal-16/DroidLM" target="_blank" rel="noopener noreferrer"
+            class="btn btn-secondary">View on GitHub</a>
         </div>
-        <p class="disclaimer">Currently in prototype / hackathon build.</p>
-      </div>
-    </section>
 
-    <!-- FAQ Section -->
-    <section class="faq" id="faq">
-      <div class="container">
-        <h2 class="section-title">Frequently Asked Questions</h2>
-        <div class="faq-list">
-          <div class="faq-item">
-            <button class="faq-question">
-              Is my data uploaded to any server?
-            </button>
-            <div class="faq-answer">
-              <p>
-                No. All data processing happens locally on your device using the
-                on-device SLM. Your personal usage stats never leave your phone.
-              </p>
-            </div>
-          </div>
-          <div class="faq-item">
-            <button class="faq-question">Is this an LLM like ChatGPT?</button>
-            <div class="faq-answer">
-              <p>
-                No, it is a Small Language Model (SLM). It is much smaller,
-                designed specifically to run efficiently on mobile hardware
-                without needing an internet connection.
-              </p>
-            </div>
-          </div>
-          <div class="faq-item">
-            <button class="faq-question">Does it work offline?</button>
-            <div class="faq-answer">
-              <p>
-                Yes, the app is fully functional without an internet connection.
-              </p>
-            </div>
-          </div>
-          <div class="faq-item">
-            <button class="faq-question">Can the app control my phone?</button>
-            <div class="faq-answer">
-              <p>
-                No. The app only reads usage statistics to generate suggestions.
-                It cannot block apps or change settings on its own; it only
-                provides "nudges" for you to act on.
-              </p>
-            </div>
-          </div>
+        <div class="hero-note">
+          <p>
+            <strong>Why this matters:</strong> Droid LM focuses on awareness, not restriction. We help you understand
+            your habits so you can make small, sustainable changes without forcibly blocking the apps you love.
+          </p>
         </div>
       </div>
-    </section>
+    </div>
+  </header>
 
-    <!-- Footer -->
-    <footer>
-      <div class="container">
-        <div class="footer-content">
-          <p>&copy; 2026 DroidLM. Built for the On-Device AI Hackathon.</p>
-          <p>This project is Open Source.</p>
-          <div class="footer-links">
-            <a href="https://github.com/PiyushAgarwal-16/DroidLM" target="_blank">GitHub</a>
-            <a href="mailto:Piyushagarwal583@gmail.com">Contact</a>
+  <!-- How It Works Section -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">
+        No internet. No cloud. No data leaves your phone.
+      </p>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-icon">1</div>
+          <h3>Data Collection</h3>
+          <p>
+            Phone usage data is collected locally using Android's native APIs.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">2</div>
+          <h3>Processing</h3>
+          <p>Data is converted into short, privacy-preserving prompts.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">3</div>
+          <h3>Analysis</h3>
+          <p>
+            On-device Small Language Model (SLM) analyzes patterns offline.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">4</div>
+          <h3>Nudges</h3>
+          <p>
+            Personalized, gently worded habit nudges are generated for you.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What the Model Learns Section -->
+  <section class="model-learning" id="model-learning">
+    <div class="container">
+      <h2 class="section-title">What the Model Learns</h2>
+      <p class="section-subtitle">
+        Droid LM quietly identifies the subtle patterns that make up your digital life, learning from your behavior
+        without judging it.
+      </p>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-icon">⏰</div>
+          <h3>Routine Detection</h3>
+          <p>
+            It spots when you rely on specific apps at certain times, like checking social media first thing in the
+            morning.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">🔁</div>
+          <h3>Habit Strength</h3>
+          <p>
+            It measures consistency to distinguish between a one-off search and a deeply ingrained daily habit.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">⚡</div>
+          <h3>Focus Levels</h3>
+          <p>
+            It recognizes when you are deeply engaged with one app versus rapidly switching between many sources of
+            distraction.
+          </p>
+        </div>
+        <div class="step-card">
+          <div class="step-icon">📊</div>
+          <h3>Weekly Rhythms</h3>
+          <p>
+            It observes how your usage evolves throughout the week to help you understand your broader digital balance.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">Key Features</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <h3>On-device SLM</h3>
+          <p>
+            Powered by a specialized Small Language Model running entirely on
+            your phone.
+          </p>
+        </div>
+        <div class="feature-item">
+          <h3>Fully Offline</h3>
+          <p>
+            Works without an internet connection. Your data never touches a
+            server.
+          </p>
+        </div>
+        <div class="feature-item">
+          <h3>Personalized Insights</h3>
+          <p>
+            Get daily screen-time insights tailored specifically to your usage
+            patterns.
+          </p>
+        </div>
+        <div class="feature-item">
+          <h3>Actionable Nudges</h3>
+          <p>
+            Receive short, practical suggestions to help improve your digital
+            wellbeing.
+          </p>
+        </div>
+        <div class="feature-item">
+          <h3>No Tracking, No Ads</h3>
+          <p>
+            Built for you, not for advertisers. Zero tracking, zero
+            advertisements.
+          </p>
+        </div>
+        <div class="feature-item">
+          <h3>Battery Efficient</h3>
+          <p>
+            Lightweight model optimized for battery life, running on mid-range
+            devices.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Small Language Model? -->
+  <section class="why-slm" id="why-slm">
+    <div class="container">
+      <h2 class="section-title">Why a Small Language Model?</h2>
+      <p class="section-description">
+        SLMs offer a perfect balance of intelligence and efficiency for mobile
+        devices.
+      </p>
+
+      <div class="comparison-container">
+        <div class="comparison-card slm-card">
+          <h3>SLM (On-Device)</h3>
+          <ul>
+            <li>✅ Faster inference on phones</li>
+            <li>✅ Lower memory usage</li>
+            <li>✅ Complete Privacy</li>
+            <li>✅ Deterministic outputs</li>
+          </ul>
+        </div>
+        <div class="comparison-card cloud-card">
+          <h3>Cloud AI</h3>
+          <ul>
+            <li>❌ Slower (latency)</li>
+            <li>❌ High data usage</li>
+            <li>❌ Privacy concerns</li>
+            <li>❌ Requires internet</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy & Security -->
+  <section class="privacy" id="privacy">
+    <div class="container">
+      <h2 class="section-title">Privacy First Design</h2>
+      <div class="privacy-content">
+        <ul>
+          <li>
+            <strong>Android UsageStatsManager:</strong> We use standard
+            Android APIs to read usage data securely.
+          </li>
+          <li>
+            <strong>Local Processing:</strong> All analysis happens right on
+            your device's processor.
+          </li>
+          <li>
+            <strong>No Login Required:</strong> Just install and use. No
+            accounts, no passwords.
+          </li>
+          <li>
+            <strong>No Cloud APIs:</strong> We don't send API requests to
+            OpenAI, Google, or anyone else.
+          </li>
+          <li>
+            <strong>No Third-Party Analytics:</strong> We don't track how you
+            use the app.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screens / Demo Section -->
+  <section class="screens" id="screens">
+    <div class="container">
+      <h2 class="section-title">See it in Action</h2>
+      <div class="screens-grid">
+        <div class="screen-card">
+          <div class="screen-placeholder">
+            <span>On-device Model Insights</span>
+          </div>
+          <p class="screen-caption">On-device Model Insights</p>
+        </div>
+        <div class="screen-card">
+          <div class="screen-placeholder">
+            <span>Usage Pattern Analysis</span>
+          </div>
+          <p class="screen-caption">Usage Pattern Analysis</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="download" id="download">
+    <div class="container">
+      <h2 class="section-title">Try it Now</h2>
+      <p>Ready to take control of your screen time?</p>
+      <div class="hero-actions">
+        <a href="https://storage.googleapis.com/droid-lm/droid-lm.apk" class="btn btn-primary">Download APK</a>
+        <a href="https://github.com/PiyushAgarwal-16/DroidLM" target="_blank" rel="noopener noreferrer"
+          class="btn btn-secondary">GitHub Repository</a>
+        <a href="#" class="btn btn-secondary">Documentation</a>
+      </div>
+      <p class="disclaimer">Currently in prototype / hackathon build.</p>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq" id="faq">
+    <div class="container">
+      <h2 class="section-title">Frequently Asked Questions</h2>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question">
+            Is my data uploaded to any server?
+          </button>
+          <div class="faq-answer">
+            <p>
+              No. All data processing happens locally on your device using the
+              on-device SLM. Your personal usage stats never leave your phone.
+            </p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">Is this an LLM like ChatGPT?</button>
+          <div class="faq-answer">
+            <p>
+              No, it is a Small Language Model (SLM). It is much smaller,
+              designed specifically to run efficiently on mobile hardware
+              without needing an internet connection.
+            </p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">Does it work offline?</button>
+          <div class="faq-answer">
+            <p>
+              Yes, the app is fully functional without an internet connection.
+            </p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">Can the app control my phone?</button>
+          <div class="faq-answer">
+            <p>
+              No. The app only reads usage statistics to generate suggestions.
+              It cannot block apps or change settings on its own; it only
+              provides "nudges" for you to act on.
+            </p>
           </div>
         </div>
       </div>
-    </footer>
+    </div>
+  </section>
 
-    <script src="script.js"></script>
-  </body>
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <p>&copy; 2026 DroidLM. Built for the On-Device AI Hackathon.</p>
+        <p>This project is Open Source.</p>
+        <div class="footer-links">
+          <a href="https://github.com/PiyushAgarwal-16/DroidLM" target="_blank">GitHub</a>
+          <a href="mailto:Piyushagarwal583@gmail.com">Contact</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+
 </html>
