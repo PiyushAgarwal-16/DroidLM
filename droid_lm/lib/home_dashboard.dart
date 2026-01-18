@@ -5,6 +5,8 @@ import 'package:droid_lm/weekly_insights_card.dart';
 import 'package:droid_lm/daily_usage_features.dart';
 import 'package:droid_lm/training_console.dart';
 import 'package:droid_lm/app_usage_summary_card.dart';
+import 'package:droid_lm/behavior_analysis.dart';
+import 'package:droid_lm/weekly_insights_screen.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -116,6 +118,56 @@ class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserv
     }
   }
 
+  Future<void> _handleDirectWeeklyInsights(BuildContext context) async {
+    setState(() => _isLoading = true);
+
+    final savedDates = await LocalStorageService.getAllSavedDays();
+    List<ModelOutput> outputs = [];
+    
+    // Process last 7 days max
+    int count = 0;
+    for (String date in savedDates) {
+      if (count >= 7) break;
+      
+      final info = await LocalStorageService.getDailyUsage(date);
+      if (info != null) {
+        final features = DailyUsageFeatures.fromRawUsageJson(info.toJson());
+        
+        // Run Inference (Mock for now, as in SavedRecordsPage)
+        final result = MLDataService.mockInference(features.toMLVector());
+        outputs.add(ModelOutput.fromMap(result));
+        
+        count++;
+      }
+    }
+    
+    // Reverse to chronological order (oldest -> newest) for trend analysis
+    outputs = outputs.reversed.toList();
+
+    // Compute Summary
+    final summary = WeeklyAnalyzer.computeSummary(outputs);
+    
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (outputs.isEmpty) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text("Not enough data for insights. Sync usage first!")),
+         );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WeeklyInsightsScreen(
+              summary: summary,
+              dateRange: "Last 7 Days",
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -214,8 +266,8 @@ class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserv
                     "AI will analyze your stability and focus."
                   ],
                   onTap: () {
-                    // Start analysis flow
-                    _navigateToSavedRecords(context);
+                    // Start analysis flow DIRECTLY
+                    _handleDirectWeeklyInsights(context);
                   },
                 ),
 
