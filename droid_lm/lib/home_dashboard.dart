@@ -161,6 +161,10 @@ class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserv
             builder: (context) => WeeklyInsightsScreen(
               summary: summary,
               dateRange: "Last 7 Days",
+              // TODO: Calculate real dominant app/time from aggregation logic
+              dominantApp: "Social Media", 
+              dominantTimeWindow: "Evening",
+              daysObserved: outputs.length,
             ),
           ),
         );
