@@ -11,14 +11,40 @@ class HomeDashboard extends StatefulWidget {
   State<HomeDashboard> createState() => _HomeDashboardState();
 }
 
-class _HomeDashboardState extends State<HomeDashboard> {
+class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserver {
   int _sampleCount = 0;
   bool _isLoading = true;
+  bool _hasPermission = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkPermission(); // Check initially
     _loadDashboardData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermission(); // Re-check on return from Settings
+      _loadDashboardData(); // Refresh data just in case
+    }
+  }
+
+  Future<void> _checkPermission() async {
+    final hasPerm = await UsageStatsService.hasUsageAccess();
+    if (mounted) {
+      setState(() {
+        _hasPermission = hasPerm;
+      });
+    }
   }
 
   Future<void> _loadDashboardData() async {
@@ -50,6 +76,52 @@ class _HomeDashboardState extends State<HomeDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 0. PERMISSION WARNING BANNER
+                if (!_hasPermission)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Permission Missing",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange.shade900,
+                                ),
+                              ),
+                              Text(
+                                "Usage access is needed to track habits.",
+                                style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            await UsageStatsService.openUsageAccessSettings();
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.orange.shade100,
+                            foregroundColor: Colors.orange.shade900,
+                          ),
+                          child: const Text("Enable"),
+                        )
+                      ],
+                    ),
+                  ),
+
                 // 1. ML MODEL CARD (Hero)
                 ModelStatusCard(
                   status: ModelStatus.idle, // Default for dashboard visualization
