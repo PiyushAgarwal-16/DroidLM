@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:droid_lm/main.dart'; // Access to Pages and Services
 import 'package:droid_lm/model_status_card.dart';
 import 'package:droid_lm/weekly_insights_card.dart';
+import 'package:droid_lm/daily_usage_features.dart';
+import 'package:droid_lm/training_console.dart';
 import 'package:droid_lm/app_usage_summary_card.dart';
 
 class HomeDashboard extends StatefulWidget {
@@ -48,13 +50,69 @@ class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserv
   }
 
   Future<void> _loadDashboardData() async {
-    // Quick fetch of how many days we have saved
+    // 1. SILENT AUTO-SYNC
+    // Automatically fetch latest data from native layer and save to local storage.
+    // This ensures training data is available immediately without manual steps.
+    if (_hasPermission) {
+      await LocalStorageService.syncDataFromNative(forceSync: false);
+    }
+  
+    // 2. Refresh Sample Count
     final days = await LocalStorageService.getAllSavedDays();
     if (mounted) {
       setState(() {
         _sampleCount = days.length;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _handleManualSync(BuildContext context) async {
+    setState(() => _isLoading = true);
+    
+    // Force sync fetches latest stats from Android and saves to SharedPreferences
+    final message = await LocalStorageService.syncDataFromNative(forceSync: true);
+    
+    // Refresh dashboard
+    await _loadDashboardData();
+    
+    setState(() => _isLoading = false);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  Future<void> _handleDirectTraining(BuildContext context) async {
+    setState(() => _isLoading = true);
+    
+    // 1. Fetch all saved dates
+    final dates = await LocalStorageService.getAllSavedDays();
+    
+    // 2. Load and convert to features
+    List<DailyUsageFeatures> trainingData = [];
+    for (String date in dates) {
+      final info = await LocalStorageService.getDailyUsage(date);
+      if (info != null) {
+        trainingData.add(DailyUsageFeatures.fromRawUsageJson(info.toJson()));
+      }
+    }
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (trainingData.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No data available for training. Sync first!")),
+        );
+      } else {
+        Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (context) => TrainingConsolePage(trainingData: trainingData)),
+        );
+      }
     }
   }
 
@@ -128,12 +186,25 @@ class _HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserv
                   sampleCount: _sampleCount,
                   lastTrainingTime: "Tap to Check",
                   onActionPressed: () {
-                    // Navigate to Training console via SavedRecords
-                    _navigateToSavedRecords(context);
+                    // Navigate DIRECTLY to Training console
+                    _handleDirectTraining(context);
                   },
                 ),
                 
-                const SizedBox(height: 20),
+
+                
+                // Manual Sync Button (Sub-Action)
+                TextButton.icon(
+                  onPressed: () => _handleManualSync(context),
+                  icon: const Icon(Icons.sync, size: 16),
+                  label: const Text("Sync Usage Data"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey.shade700,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                
+                const SizedBox(height: 10),
                 
                 // 2. WEEKLY INSIGHTS
                 WeeklyInsightsCard(

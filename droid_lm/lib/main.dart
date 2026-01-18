@@ -300,6 +300,13 @@ class _UsageStatsPageState extends State<UsageStatsPage> with WidgetsBindingObse
           _dailyStats = stats;
           _isLoading = false;
         });
+
+        // AUTO-SAVE: Persist fetched logs to local storage automatically
+        // This ensures training data is available without manual sync
+        for (var day in stats) {
+          await LocalStorageService.saveDailyUsage(day);
+        }
+        debugPrint("Auto-saved ${stats.length} days of usage logs.");
       }
     } else {
       if (mounted) {
